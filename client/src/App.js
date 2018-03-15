@@ -7,17 +7,143 @@ import createFocusPlugin from 'draft-js-focus-plugin';
 import createResizeablePlugin from 'draft-js-resizeable-plugin';
 import createBlockDndPlugin from 'draft-js-drag-n-drop-plugin';
 import createDragNDropUploadPlugin from './draft-js-drag-n-drop-upload-plugin';
+import createToolbarPlugin, { Separator } from 'draft-js-static-toolbar-plugin';
+import {
+  ItalicButton,
+  BoldButton,
+  UnderlineButton,
+  CodeButton,
+  HeadlineOneButton,
+  HeadlineTwoButton,
+  HeadlineThreeButton,
+  UnorderedListButton,
+  OrderedListButton,
+  BlockquoteButton,
+  CodeBlockButton,
+} from 'draft-js-buttons';
 //import mockUpload from './mockUpload';
 import createKatexPlugin from './CreateKatexPlugin.js';
 import logo from './logo.svg';
 import './App.css';
-import editorStyles from './editorStyles.css';
+import 'draft-js/dist/Draft.css';
+import 'draft-js-alignment-plugin/lib/plugin.css';
+import 'draft-js-static-toolbar-plugin/lib/plugin.css';
+import './editorStyles.css';
+import { createImage } from './modifiers/addImage.js';
+
+class HeadlinesPicker extends Component {
+  componentDidMount() {
+    setTimeout(() => { window.addEventListener('click', this.onWindowClick); });
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('click', this.onWindowClick);
+  }
+
+  onWindowClick = () =>
+    // Call `onOverrideContent` again with `undefined`
+    // so the toolbar can show its regular content again.
+    this.props.onOverrideContent(undefined);
+
+  render() {
+    const buttons = [HeadlineOneButton, HeadlineTwoButton, HeadlineThreeButton];
+    return (
+      <div>
+        {buttons.map((Button, i) => // eslint-disable-next-line
+          <Button key={i} {...this.props} />
+        )}
+      </div>
+    );
+  }
+}
+
+class HeadlinesButton extends Component {
+  onClick = () =>
+    // A button can call `onOverrideContent` to replace the content
+    // of the toolbar. This can be useful for displaying sub
+    // menus or requesting additional information from the user.
+    this.props.onOverrideContent(HeadlinesPicker);
+
+  render() {
+    return (
+      <div className="headlineButtonWrapper">
+        <button onClick={this.onClick} className="headlineButton">
+          H
+        </button>
+      </div>
+    );
+  }
+}
+
+class ImageButton extends Component {
+  onClick = () =>
+  {
+    let file;
+    const imgTypes = /image\//;
+    const virtualElement = document.createElement('input');
+  
+    virtualElement.setAttribute('type', 'file');
+    virtualElement.setAttribute('accept', 'image/*');
+    virtualElement.click();
+  
+    // user opened (selected) files on the popup----proceed further to handle it / upload
+    virtualElement.addEventListener('change', () => {
+      file = virtualElement.files[0];
+      const fileReader = new FileReader();
+  
+      fileReader.onerror = (e) => console.log(`Unable to proceed with the file requested. Error: ${e.detail}`);
+      // user submits an image successfully
+      fileReader.onload = () => {
+  
+        if (imgTypes.test(file.type)) {
+          createImage(fileReader.result, this.props.getEditorState, this.props.setEditorState);
+          console.log('Image inserted successfully');
+  
+        } else {
+  
+          // can handle some modal/popup/tooltip alerting user of wrong file type
+          console.error('The file type requested is not an image type!');
+          return false;
+        }
+      };
+      // finally, begin loading the image and fire the event handlers
+      fileReader.readAsDataURL(file);
+    });
+  }
+  render() {
+    return (
+      <div className="headlineButtonWrapper">
+        <button onClick={this.onClick} className="headlineButton">
+          Image
+        </button>
+      </div>
+    );
+  }
+}
+
 
 const focusPlugin = createFocusPlugin();
 const resizeablePlugin = createResizeablePlugin();
 const blockDndPlugin = createBlockDndPlugin();
 const alignmentPlugin = createAlignmentPlugin();
 const { AlignmentTool } = alignmentPlugin;
+const toolbarPlugin = createToolbarPlugin({
+  structure: [
+    BoldButton,
+    ItalicButton,
+    UnderlineButton,
+    CodeButton,
+    Separator,
+    HeadlinesButton,
+    UnorderedListButton,
+    OrderedListButton,
+    BlockquoteButton,
+    CodeBlockButton,
+    Separator,
+    ImageButton
+  ]
+});
+const { Toolbar } = toolbarPlugin;
 const decorator = composeDecorators(
   resizeablePlugin.decorator,
   alignmentPlugin.decorator,
@@ -39,6 +165,7 @@ const plugins = [
   alignmentPlugin,
   resizeablePlugin,
   imagePlugin,
+  toolbarPlugin,
   katexPlugin,
 ];
 
@@ -52,7 +179,8 @@ class MyEditor extends React.Component {
   render() {
     return (
       <div>
-        <div className={editorStyles.editor} onClick={this.focus}>
+        <div className="editor" onClick={this.focus}>
+          <Toolbar />
           <Editor
             editorState={this.state.editorState}
             onChange={this.onChange}
