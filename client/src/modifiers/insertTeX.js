@@ -1,6 +1,7 @@
 import {
   Modifier,
   EditorState,
+  convertToRaw
 } from 'draft-js'
 import { Map } from 'immutable'
 import customInsertAtomicBlock from './customInsertAtomicBlock'
@@ -82,6 +83,7 @@ function insertInlineTeX(editorState) {
 }
 
 function insertTeXBlock(editorState) {
+  console.log(`${JSON.stringify(convertToRaw(editorState.getCurrentContent()), null, 4)}`)
   return customInsertAtomicBlock(
       editorState, Map({ katex: true, teX: '' }),
     )
