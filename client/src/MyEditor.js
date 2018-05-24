@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Editor, { composeDecorators } from 'draft-js-plugins-editor';
-import { EditorState } from 'draft-js';
+import { EditorState, SelectionState, Modifier } from 'draft-js';
 import createImagePlugin from 'draft-js-image-plugin';
 import createAlignmentPlugin from 'draft-js-alignment-plugin';
 import createFocusPlugin from 'draft-js-focus-plugin';
@@ -74,7 +74,85 @@ class HeadlinesButton extends Component {
 }
 
 class TexifyButton extends Component {
-  onClick = () => {}
+  onClick = () => {
+    let editorState = this.props.getEditorState();
+    let contentState = editorState.getCurrentContent();
+    let selection = editorState.getSelection();
+    let blockKey = selection.getStartKey();
+    let currentBlock = contentState.getBlockForKey(blockKey);
+    let ofs = selection.getStartOffset();
+    let endOfs = selection.getEndOffset();
+    let endBlockKey = selection.getEndKey();
+    let curText = currentBlock.getText();
+    let texBegin = -1;
+    while (blockKey !== endBlockKey || ofs !== endOfs) {
+      if (ofs < currentBlock.getLength()) {
+        if (curText[ofs] === '$' && texBegin !== -1) {
+          contentState = contentState.createEntity(
+            'INLINETEX', 'IMMUTABLE',
+            {teX: curText.slice(texBegin + 1, ofs), displaystyle: false}
+          );
+          const entityKey = contentState.getLastCreatedEntityKey();
+          if (texBegin === 0) {
+            contentState = Modifier.insertText(contentState,
+              new SelectionState({
+                anchorKey: blockKey,
+                anchorOffset: 0,
+                focusKey: blockKey,
+                focusOffset: 0,
+                isBackward: false,
+                hasFocus: true}), ' ');
+            ++ofs;
+            ++texBegin;
+            if (blockKey === endBlockKey) {
+              ++endOfs;
+            }
+          }
+          if (ofs === currentBlock.getLength() - 1) {
+            contentState = Modifier.insertText(contentState,
+              new SelectionState({
+                anchorKey: blockKey,
+                anchorOffset: currentBlock.getLength(),
+                focusKey: blockKey,
+                focusOffset: currentBlock.getLength(),
+                isBackward: false,
+                hasFocus: true}), ' ');
+          }
+        
+          contentState = Modifier.replaceText(contentState,
+            new SelectionState({
+              anchorKey: blockKey,
+              anchorOffset: texBegin,
+              focusKey: blockKey,
+              focusOffset: ofs + 1,
+              isBackward: false,
+              hasFocus: true
+            }), '\t\t', undefined, entityKey);
+          currentBlock = contentState.getBlockForKey(blockKey);
+          curText = currentBlock.getText();
+          if (blockKey === endBlockKey) {
+            endOfs -= ofs + 1 - texBegin - 2;
+          }
+          ofs = texBegin + 2;
+          texBegin = -1;
+        } else {
+          if (curText[ofs] === '$') {
+            texBegin = ofs;
+          }
+          ++ofs;
+        }
+      } else {
+        blockKey = contentState.getKeyAfter(blockKey);
+        currentBlock = contentState.getBlockForKey(blockKey);
+        curText = currentBlock.getText();
+        ofs = 0;
+        texBegin = -1;
+      }
+    }
+    editorState = EditorState.push(editorState, contentState, 'apply-entity');
+    editorState = EditorState.forceSelection(editorState, editorState.getCurrentContent().getSelectionAfter());
+    this.props.setEditorState(editorState);
+  }
 
   render() {
     return (
@@ -189,7 +267,7 @@ class MyEditor extends React.Component {
     this.state = {editorState: EditorState.createEmpty()};
   };
   onChange = (editorState) => this.setState({editorState});
-  focus = () => {this.editor.focus();};
+  focus = () => setTimeout(this.editor.focus, 50);
   render() {
     return (
       <div>
