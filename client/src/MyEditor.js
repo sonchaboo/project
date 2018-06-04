@@ -8,6 +8,7 @@ import createResizeablePlugin from 'draft-js-resizeable-plugin';
 import createBlockDndPlugin from 'draft-js-drag-n-drop-plugin';
 import createDragNDropUploadPlugin from './draft-js-drag-n-drop-upload-plugin';
 import createToolbarPlugin, { Separator } from 'draft-js-static-toolbar-plugin';
+import createToolbarLinkPlugin from 'draft-js-toolbar-link-plugin';
 import {
   ItalicButton,
   BoldButton,
@@ -217,6 +218,8 @@ const resizeablePlugin = createResizeablePlugin();
 const blockDndPlugin = createBlockDndPlugin();
 const alignmentPlugin = createAlignmentPlugin();
 const { AlignmentTool } = alignmentPlugin;
+const toolbarLinkPlugin = createToolbarLinkPlugin({});
+const { LinkButton } = toolbarLinkPlugin;
 const toolbarPlugin = createToolbarPlugin({
   structure: [
     BoldButton,
@@ -232,7 +235,8 @@ const toolbarPlugin = createToolbarPlugin({
     Separator,
     ImageButton,
     Separator,
-    TexifyButton
+    LinkButton,
+    TexifyButton,
   ]
 });
 const { Toolbar } = toolbarPlugin;
@@ -259,6 +263,7 @@ const plugins = [
   resizeablePlugin,
   toolbarPlugin,
   katexPlugin,
+  toolbarLinkPlugin,
 ];
 
 class MyEditor extends React.Component {
